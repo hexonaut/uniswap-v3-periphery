@@ -1,12 +1,15 @@
 import { Fixture } from 'ethereum-waffle'
 import { ethers } from 'hardhat'
 import { v3RouterFixture } from './externalFixtures'
+import { FeeAmount, TICK_SPACINGS } from '../shared/constants'
+import { getMaxTick, getMinTick } from '../shared/ticks'
 import { constants } from 'ethers'
 import {
   IWETH9,
   MockTimeNonfungiblePositionManager,
   MockTimeSwapRouter,
   NonfungibleTokenPositionDescriptor,
+  FixedFungibleERC20,
   TestERC20,
   IUniswapV3Factory,
 } from '../../typechain'
@@ -17,6 +20,7 @@ const completeFixture: Fixture<{
   router: MockTimeSwapRouter
   nft: MockTimeNonfungiblePositionManager
   nftDescriptor: NonfungibleTokenPositionDescriptor
+  fixed: FixedFungibleERC20
   tokens: [TestERC20, TestERC20, TestERC20]
 }> = async (wallets, provider) => {
   const { weth9, factory, router } = await v3RouterFixture(wallets, provider)
@@ -48,6 +52,17 @@ const completeFixture: Fixture<{
 
   tokens.sort((a, b) => (a.address.toLowerCase() < b.address.toLowerCase() ? -1 : 1))
 
+  const fixedFungibleFactory = await ethers.getContractFactory('FixedFungibleERC20')
+  const fixed = (await fixedFungibleFactory.deploy(
+    factory.address,
+    weth9.address,
+    tokens[0].address,
+    tokens[1].address,
+    FeeAmount.LOW,
+    getMinTick(TICK_SPACINGS[FeeAmount.LOW]),
+    getMaxTick(TICK_SPACINGS[FeeAmount.LOW]),
+  )) as FixedFungibleERC20
+
   return {
     weth9,
     factory,
@@ -55,6 +70,7 @@ const completeFixture: Fixture<{
     tokens,
     nft,
     nftDescriptor,
+    fixed,
   }
 }
 

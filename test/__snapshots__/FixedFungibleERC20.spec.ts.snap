@@ -1,0 +1,5 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`FixedFungibleERC20 #createAndInitializePoolIfNecessary gas 1`] = `4611853`;
+
+exports[`FixedFungibleERC20 bytecode size 1`] = `12109`;

@@ -71,10 +71,6 @@ describe('FixedFungibleERC20', () => {
     ;({ fixed, factory, tokens, weth9, router } = await loadFixture(fixedFixture))
   })
 
-  it('bytecode size', async () => {
-    expect(((await fixed.provider.getCode(fixed.address)).length - 2) / 2).to.matchSnapshot()
-  })
-
   describe('#createAndInitializePoolIfNecessary', () => {
     it('creates the pool at the expected address', async () => {
       const expectedAddress = computePoolAddress(
@@ -139,17 +135,6 @@ describe('FixedFungibleERC20', () => {
         tokens[1].address,
         FeeAmount.LOW,
         encodePriceSqrt(4, 1)
-      )
-    })
-
-    it('gas', async () => {
-      await snapshotGasCost(
-        fixed.createAndInitializePoolIfNecessary(
-          tokens[0].address,
-          tokens[1].address,
-          FeeAmount.LOW,
-          encodePriceSqrt(1, 1)
-        )
       )
     })
   })

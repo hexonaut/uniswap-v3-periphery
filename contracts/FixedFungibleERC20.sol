@@ -49,6 +49,44 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer {
         tickUpper = _tickUpper;
     }
 
+    /// @dev Re-invest profit.
+    modifier harvest {
+        (,,, uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(keccak256(abi.encodePacked(address(this), tickLower, tickUpper)));
+        pool.collect(address(this), tickLower, tickUpper, tokensOwed0, tokensOwed1);
+
+        // compute the liquidity amount
+        uint128 liquidity;
+        {
+            (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
+            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+
+            liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                sqrtPriceX96,
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                token0.balanceOf(address(this)),
+                token1.balanceOf(address(this))
+            );
+        }
+
+        // TODO - swap token0 to token1 if liquidity is constrained by token1 (and vice versa) ??
+
+        if (liquidity > 0) {
+            pool.mint(
+                address(this),
+                tickLower,
+                tickUpper,
+                liquidity,
+                abi.encode(MintCallbackData({poolKey: poolKey, payer: address(this)}))
+            );
+
+            totalLiquidity = totalLiquidity.add(liquidity);
+        }
+
+        _;
+    }
+
     /// @dev Mint new tokens in exchange for the underlying tokens.
     function mint(
         address recipient,
@@ -56,19 +94,22 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer {
         uint256 amount1Desired,
         uint256 amount0Min,
         uint256 amount1Min
-    ) external returns (uint256 amount) {
+    ) external harvest returns (uint256 amount) {
         // compute the liquidity amount
-        (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
-        uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-        uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
+        uint128 liquidity;
+        {
+            (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
+            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
+            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
 
-        uint128 liquidity = LiquidityAmounts.getLiquidityForAmounts(
-            sqrtPriceX96,
-            sqrtRatioAX96,
-            sqrtRatioBX96,
-            amount0Desired,
-            amount1Desired
-        );
+            liquidity = LiquidityAmounts.getLiquidityForAmounts(
+                sqrtPriceX96,
+                sqrtRatioAX96,
+                sqrtRatioBX96,
+                amount0Desired,
+                amount1Desired
+            );
+        }
 
         (uint256 amount0, uint256 amount1) = pool.mint(
             address(this),
@@ -92,7 +133,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer {
         uint256 amount,
         uint256 amount0Min,
         uint256 amount1Min
-    ) external returns (uint256 amount0, uint256 amount1) {
+    ) external harvest returns (uint256 amount0, uint256 amount1) {
         uint128 liquidity = toUint128(amount.mul(totalLiquidity) / totalSupply());   // Round against the user
         _burn(msg.sender, amount);
         (amount0, amount1) = pool.burn(tickLower, tickUpper, liquidity);
@@ -101,43 +142,6 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer {
         require(amount0 >= amount0Min && amount1 >= amount1Min, 'Price slippage check');
 
         pool.collect(msg.sender, tickLower, tickUpper, toUint128(amount0), toUint128(amount1));
-    }
-
-    /// @dev Re-invest profit.
-    function harvest() external returns (uint128 liquidity) {
-        (,,, uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(keccak256(abi.encodePacked(address(this), tickLower, tickUpper)));
-        pool.collect(address(this), tickLower, tickUpper, tokensOwed0, tokensOwed1);
-
-        // Check the balance as there may be more tokens sitting in the contract
-        uint256 balance0 = token0.balanceOf(address(this));
-        uint256 balance1 = token1.balanceOf(address(this));
-
-        // compute the liquidity amount
-        {
-            (uint160 sqrtPriceX96, , , , , , ) = pool.slot0();
-            uint160 sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(tickLower);
-            uint160 sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(tickUpper);
-
-            liquidity = LiquidityAmounts.getLiquidityForAmounts(
-                sqrtPriceX96,
-                sqrtRatioAX96,
-                sqrtRatioBX96,
-                balance0,
-                balance1
-            );
-        }
-
-        // TODO - swap token0 to token1 if liquidity is constrained by token1 (and vice versa) ??
-
-        pool.mint(
-            address(this),
-            tickLower,
-            tickUpper,
-            liquidity,
-            abi.encode(MintCallbackData({poolKey: poolKey, payer: address(this)}))
-        );
-
-        totalLiquidity = totalLiquidity.add(liquidity);
     }
 
     /// @notice Downcasts uint256 to uint128

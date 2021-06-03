@@ -12,6 +12,7 @@ import {
 } from '../typechain'
 import completeFixture from './shared/completeFixture'
 import { computePoolAddress } from './shared/computePoolAddress'
+import { computePositionHash } from './shared/position'
 import { FeeAmount, MaxUint128, TICK_SPACINGS } from './shared/constants'
 import { encodePriceSqrt } from './shared/encodePriceSqrt'
 import { expect } from './shared/expect'
@@ -280,122 +281,6 @@ describe('FixedFungibleERC20', () => {
     })
   })
 
-  /*describe('#collect', () => {
-    const tokenId = 1
-    beforeEach('create a position', async () => {
-      await nft.createAndInitializePoolIfNecessary(
-        tokens[0].address,
-        tokens[1].address,
-        FeeAmount.LOW,
-        encodePriceSqrt(1, 1)
-      )
-
-      await nft.mint({
-        token0: tokens[0].address,
-        token1: tokens[1].address,
-        fee: FeeAmount.LOW,
-        tickLower: getMinTick(TICK_SPACINGS[FeeAmount.LOW]),
-        tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.LOW]),
-        recipient: other.address,
-        amount0Desired: 100,
-        amount1Desired: 100,
-        amount0Min: 0,
-        amount1Min: 0,
-        deadline: 1,
-      })
-    })
-
-    it('emits an event')
-
-    it('cannot be called by other addresses', async () => {
-      await expect(
-        nft.collect({
-          tokenId,
-          recipient: wallet.address,
-          amount0Max: MaxUint128,
-          amount1Max: MaxUint128,
-        })
-      ).to.be.revertedWith('Not approved')
-    })
-
-    it('cannot be called with 0 for both amounts', async () => {
-      await expect(
-        nft.connect(other).collect({
-          tokenId,
-          recipient: wallet.address,
-          amount0Max: 0,
-          amount1Max: 0,
-        })
-      ).to.be.reverted
-    })
-
-    it('no op if no tokens are owed', async () => {
-      await expect(
-        nft.connect(other).collect({
-          tokenId,
-          recipient: wallet.address,
-          amount0Max: MaxUint128,
-          amount1Max: MaxUint128,
-        })
-      )
-        .to.not.emit(tokens[0], 'Transfer')
-        .to.not.emit(tokens[1], 'Transfer')
-    })
-
-    it('transfers tokens owed from burn', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
-      const poolAddress = computePoolAddress(factory.address, [tokens[0].address, tokens[1].address], FeeAmount.LOW)
-      await expect(
-        nft.connect(other).collect({
-          tokenId,
-          recipient: wallet.address,
-          amount0Max: MaxUint128,
-          amount1Max: MaxUint128,
-        })
-      )
-        .to.emit(tokens[0], 'Transfer')
-        .withArgs(poolAddress, wallet.address, 49)
-        .to.emit(tokens[1], 'Transfer')
-        .withArgs(poolAddress, wallet.address, 49)
-    })
-
-    it('gas transfers both', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
-      await snapshotGasCost(
-        nft.connect(other).collect({
-          tokenId,
-          recipient: wallet.address,
-          amount0Max: MaxUint128,
-          amount1Max: MaxUint128,
-        })
-      )
-    })
-
-    it('gas transfers token0 only', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
-      await snapshotGasCost(
-        nft.connect(other).collect({
-          tokenId,
-          recipient: wallet.address,
-          amount0Max: MaxUint128,
-          amount1Max: 0,
-        })
-      )
-    })
-
-    it('gas transfers token1 only', async () => {
-      await nft.connect(other).decreaseLiquidity({ tokenId, liquidity: 50, amount0Min: 0, amount1Min: 0, deadline: 1 })
-      await snapshotGasCost(
-        nft.connect(other).collect({
-          tokenId,
-          recipient: wallet.address,
-          amount0Max: 0,
-          amount1Max: MaxUint128,
-        })
-      )
-    })
-  })*/
-
   describe('fees accounting', () => {
     beforeEach('create two positions', async () => {
       await fixed.createAndInitializePoolIfNecessary(
@@ -435,43 +320,22 @@ describe('FixedFungibleERC20', () => {
         })
       })
       it('expected amounts', async () => {
+        const expectedAddress = computePoolAddress(
+          factory.address,
+          [tokens[0].address, tokens[1].address],
+          FeeAmount.LOW
+        )
+        const pool = new ethers.Contract(expectedAddress, IUniswapV3PoolABI, wallet)
+        const hash = computePositionHash(fixed.address, await fixed.tickLower(), await fixed.tickUpper())
+        const { tokensOwed0, tokensOwed1 } = await pool.positions(hash)
+        expect(tokensOwed0).to.eq(expandTo18Decimals(10_000))
+        expect(tokensOwed1).to.eq(expandTo18Decimals(0))
         expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(400).add(21))
         expect(await fixed.totalLiquidity()).to.eq(expandTo18Decimals(400).add(21))
         await fixed.harvest()
         expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(400).add(21))
         expect(await fixed.totalLiquidity()).to.eq(expandTo18Decimals(10_000 + 400).add(21))
       })
-
-      /*it('actually collected', async () => {
-        const poolAddress = computePoolAddress(
-          factory.address,
-          [tokens[0].address, tokens[1].address],
-          FeeAmount.LOW
-        )
-
-        await expect(
-          nft.collect({
-            tokenId: 1,
-            recipient: wallet.address,
-            amount0Max: MaxUint128,
-            amount1Max: MaxUint128,
-          })
-        )
-          .to.emit(tokens[0], 'Transfer')
-          .withArgs(poolAddress, wallet.address, 2501)
-          .to.not.emit(tokens[1], 'Transfer')
-        await expect(
-          nft.collect({
-            tokenId: 2,
-            recipient: wallet.address,
-            amount0Max: MaxUint128,
-            amount1Max: MaxUint128,
-          })
-        )
-          .to.emit(tokens[0], 'Transfer')
-          .withArgs(poolAddress, wallet.address, 7503)
-          .to.not.emit(tokens[1], 'Transfer')
-      })*/
     })
   })
 })

@@ -60,7 +60,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
     }
 
     /// @dev Re-invest profit.
-    modifier harvest {
+    modifier fees {
         (,,, uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(keccak256(abi.encodePacked(address(this), tickLower, tickUpper)));
         pool.collect(address(this), tickLower, tickUpper, tokensOwed0, tokensOwed1);
 
@@ -152,7 +152,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
         uint256 amount1Desired,
         uint256 amount0Min,
         uint256 amount1Min
-    ) external harvest returns (uint256 amount) {
+    ) external fees returns (uint256 amount) {
         // compute the liquidity amount
         uint128 liquidity;
         {
@@ -189,7 +189,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
         uint256 amount,
         uint256 amount0Min,
         uint256 amount1Min
-    ) external harvest returns (uint256 amount0, uint256 amount1) {
+    ) external fees returns (uint256 amount0, uint256 amount1) {
         uint128 liquidity = toUint128(amount.mul(totalLiquidity) / totalSupply());   // Round against the user
         _burn(msg.sender, amount);
         (amount0, amount1) = pool.burn(tickLower, tickUpper, liquidity);
@@ -198,6 +198,9 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
         require(amount0 >= amount0Min && amount1 >= amount1Min, 'Price slippage check');
 
         pool.collect(msg.sender, tickLower, tickUpper, toUint128(amount0), toUint128(amount1));
+    }
+
+    function harvest() external fees {
     }
 
     /// @notice Downcasts uint256 to uint128

@@ -90,6 +90,7 @@ describe('FixedFungibleERC20', () => {
       const codeAfter = await wallet.provider.getCode(expectedAddress)
       expect(codeAfter).to.not.eq('0x')
       expect(await fixed.pool()).to.eq(expectedAddress)
+      expect(await fixed.positionHash()).to.eq(computePositionHash(fixed.address, await fixed.tickLower(), await fixed.tickUpper()))
     })
 
     it('is payable', async () => {

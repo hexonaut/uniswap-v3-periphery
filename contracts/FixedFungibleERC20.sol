@@ -30,6 +30,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
     uint160 public immutable sqrtRatioAX96;
     uint160 public immutable sqrtRatioBX96;
     PoolAddress.PoolKey public poolKey;
+    bytes32 public immutable positionHash;
 
     /// @dev Equal to totalSupply + fees.
     uint256 public totalLiquidity;
@@ -57,11 +58,12 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
         tickUpper = _tickUpper;
         sqrtRatioAX96 = TickMath.getSqrtRatioAtTick(_tickLower);
         sqrtRatioBX96 = TickMath.getSqrtRatioAtTick(_tickUpper);
+        positionHash = keccak256(abi.encodePacked(address(this), _tickLower, _tickUpper));
     }
 
     /// @dev Re-invest profit.
     modifier fees {
-        (,,, uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(keccak256(abi.encodePacked(address(this), tickLower, tickUpper)));
+        (,,, uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(positionHash);
         pool.collect(address(this), tickLower, tickUpper, tokensOwed0, tokensOwed1);
 
         // Swap one token for the other to maximize liquidity

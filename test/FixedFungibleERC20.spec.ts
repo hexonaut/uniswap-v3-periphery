@@ -321,16 +321,6 @@ describe('FixedFungibleERC20', () => {
         })
       })
       it('expected amounts', async () => {
-        const expectedAddress = computePoolAddress(
-          factory.address,
-          [tokens[0].address, tokens[1].address],
-          FeeAmount.LOW
-        )
-        const pool = new ethers.Contract(expectedAddress, IUniswapV3PoolABI, wallet)
-        const hash = computePositionHash(fixed.address, await fixed.tickLower(), await fixed.tickUpper())
-        const { tokensOwed0, tokensOwed1 } = await pool.positions(hash)
-        expect(tokensOwed0).to.eq(expandTo18Decimals(10_000))
-        expect(tokensOwed1).to.eq(expandTo18Decimals(0))
         expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(400).add(21))
         expect(await fixed.totalLiquidity()).to.eq(expandTo18Decimals(400).add(21))
         await fixed.harvest()

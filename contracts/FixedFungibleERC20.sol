@@ -63,6 +63,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
 
     /// @dev Re-invest profit.
     modifier fees {
+        if (totalSupply() > 0) pool.burn(tickLower, tickUpper, 0);   // Trigger a position update to get fees
         (,,, uint128 tokensOwed0, uint128 tokensOwed1) = pool.positions(positionHash);
         pool.collect(address(this), tickLower, tickUpper, tokensOwed0, tokensOwed1);
 

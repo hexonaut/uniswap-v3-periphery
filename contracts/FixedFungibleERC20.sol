@@ -2,6 +2,8 @@
 pragma solidity =0.7.6;
 pragma abicoder v2;
 
+import "hardhat/console.sol";
+
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import '@uniswap/v3-core/contracts/interfaces/IUniswapV3Pool.sol';
@@ -85,29 +87,37 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
             // Price is inside the range - calculate optimal combination assuming no slippage
             uint256 bal0 = token0.balanceOf(address(this));
             uint256 bal1 = token1.balanceOf(address(this));
+            //console.log("bal0 = %s, bal1 = %s", bal0, bal1);
             if (bal0 > 0 || bal1 > 0) {
                 uint256 targetRatio = FullMath.mulDiv(sqrtPriceX96 - sqrtRatioAX96, FixedPoint96.Q96, sqrtRatioBX96 - sqrtRatioAX96);
                 uint256 currentRatio = FullMath.mulDiv(bal1, FixedPoint96.Q96, bal0.add(bal1));
+                //console.log("targetRatio = %s, currentRatio = %s, bal0 = %s", targetRatio, currentRatio, bal0);
                 if (currentRatio < targetRatio && bal0 > 0) {
                     // Trade token0 for token1
                     // TODO take price into account
-                    pool.swap(
-                        address(this),
-                        true,
-                        FullMath.mulDiv(targetRatio - currentRatio, bal0, 2 * FixedPoint96.Q96).toInt256(),
-                        TickMath.MIN_SQRT_RATIO + 1,
-                        ""
-                    );
+                    int256 swapAmount = FullMath.mulDiv(targetRatio - currentRatio, bal0, 2 * FixedPoint96.Q96).toInt256();
+                    if (swapAmount > 0) {
+                        pool.swap(
+                            address(this),
+                            true,
+                            swapAmount,
+                            TickMath.MIN_SQRT_RATIO + 1,
+                            ""
+                        );
+                    }
                 } else if (currentRatio > targetRatio && bal1 > 0) {
                     // Trade token1 for token0
                     // TODO take price into account
-                    pool.swap(
-                        address(this),
-                        false,
-                        FullMath.mulDiv(currentRatio - targetRatio, bal1, 2 * FixedPoint96.Q96).toInt256(),
-                        TickMath.MAX_SQRT_RATIO - 1,
-                        ""
-                    );
+                    int256 swapAmount = FullMath.mulDiv(currentRatio - targetRatio, bal1, 2 * FixedPoint96.Q96).toInt256();
+                    if (swapAmount > 0) {
+                        pool.swap(
+                            address(this),
+                            false,
+                            swapAmount,
+                            TickMath.MAX_SQRT_RATIO - 1,
+                            ""
+                        );
+                    }
                 }
             }
         } else {
@@ -132,6 +142,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
             token0.balanceOf(address(this)),
             token1.balanceOf(address(this))
         );
+        //console.log("liquidity = %s", liquidity);
 
         if (liquidity > 0) {
             pool.mint(
@@ -217,7 +228,7 @@ contract FixedFungibleERC20 is ERC20, LiquidityManagement, PoolInitializer, IUni
     function uniswapV3SwapCallback(
         int256 amount0Delta,
         int256 amount1Delta,
-        bytes calldata _data
+        bytes calldata
     ) external override {
         CallbackValidation.verifyCallback(factory, poolKey);
 

@@ -190,10 +190,10 @@ describe('FixedFungibleERC20', () => {
         0,
         0
       )
-      expect(await fixed.balanceOf(other.address)).to.eq(expandTo18Decimals(15))
-      expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(15))
-      expect(bal0.sub(expandTo18Decimals(15)).sub(await tokens[0].balanceOf(wallet.address))).to.be.lte(1)     // Allow for a small rounding error (should be against the user)
-      expect(bal1.sub(expandTo18Decimals(15)).sub(await tokens[1].balanceOf(wallet.address))).to.be.lte(1)
+      expect(await fixed.balanceOf(other.address)).to.eq("30009000599969999400239")
+      expect(await fixed.totalSupply()).to.eq("30009000599969999400239")
+      expect(bal0.sub(await tokens[0].balanceOf(wallet.address))).to.eq(expandTo18Decimals(15))
+      expect(bal1.sub(await tokens[1].balanceOf(wallet.address))).to.eq(expandTo18Decimals(15))
     })
 
     it('lop-sided liquidity', async () => {
@@ -213,9 +213,10 @@ describe('FixedFungibleERC20', () => {
         0,
         0
       )
-      expect(await fixed.balanceOf(other.address)).to.eq(expandTo18Decimals(15))
-      expect(bal0.sub(expandTo18Decimals(15)).sub(await tokens[0].balanceOf(wallet.address))).to.be.lte(1)     // Allow for a small rounding error (should be against the user)
-      expect(bal1.sub(expandTo18Decimals(15)).sub(await tokens[1].balanceOf(wallet.address))).to.be.lte(1)
+      expect(await fixed.balanceOf(other.address)).to.eq("30009000599969999400239")
+      expect(await fixed.totalSupply()).to.eq("30009000599969999400239")
+      expect(bal0.sub(await tokens[0].balanceOf(wallet.address))).to.eq(expandTo18Decimals(15))
+      expect(bal1.sub(await tokens[1].balanceOf(wallet.address))).to.eq(expandTo18Decimals(15))
     })
 
     it('creates 2 positions', async () => {
@@ -235,9 +236,9 @@ describe('FixedFungibleERC20', () => {
         0,
         0
       )
-      expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(10))
-      expect(await fixed.totalLiquidity()).to.eq(expandTo18Decimals(10))
-      expect(await fixed.balanceOf(wallet.address)).to.eq(expandTo18Decimals(10))
+      expect(await fixed.totalSupply()).to.eq("20006000399979999600159")
+      expect(await fixed.totalLiquidity()).to.eq("20006000399979999600159")
+      expect(await fixed.balanceOf(wallet.address)).to.eq("20006000399979999600159")
       await fixed.mint(
         other.address,
         expandTo18Decimals(20),
@@ -246,10 +247,10 @@ describe('FixedFungibleERC20', () => {
         0
       )
       // Slight rounding errors
-      expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(30).add(1))
-      expect(await fixed.totalLiquidity()).to.eq(expandTo18Decimals(30).add(1))
-      expect(await fixed.balanceOf(wallet.address)).to.eq(expandTo18Decimals(10))
-      expect(await fixed.balanceOf(other.address)).to.eq(expandTo18Decimals(20).add(1))
+      expect(await fixed.totalSupply()).to.eq("60018001199939998800478")
+      expect(await fixed.totalLiquidity()).to.eq("60018001199939998800478")
+      expect(await fixed.balanceOf(wallet.address)).to.eq("20006000399979999600159")
+      expect(await fixed.balanceOf(other.address)).to.eq("40012000799959999200319")
     })
   })
 
@@ -269,16 +270,17 @@ describe('FixedFungibleERC20', () => {
         0,
         0
       )
+      expect(await fixed.balanceOf(other.address)).to.eq("20006000399979999600159")
     })
 
     it('burns the token', async () => {
       const bal0 = await tokens[0].balanceOf(other.address);
       const bal1 = await tokens[1].balanceOf(other.address);
-      await fixed.connect(other).burn(expandTo18Decimals(10), 0, 0)
+      await fixed.connect(other).burn("20006000399979999600159", 0, 0)
       const liquidity = await fixed.balanceOf(other.address)
       expect(liquidity).to.eq(0)
-      expect(bal0.add(expandTo18Decimals(10)).sub(await tokens[0].balanceOf(other.address))).to.be.lte(1)     // Allow for a small rounding error (should be against the user)
-      expect(bal1.add(expandTo18Decimals(10)).sub(await tokens[1].balanceOf(other.address))).to.be.lte(1)
+      expect((await tokens[0].balanceOf(other.address)).sub(bal0)).to.eq("9999999999999999999")     // Allow for a small rounding error (should be against the user)
+      expect((await tokens[1].balanceOf(other.address)).sub(bal1)).to.eq("9999999999999999999")
     })
   })
 
@@ -321,11 +323,11 @@ describe('FixedFungibleERC20', () => {
         })
       })
       it('expected amounts', async () => {
-        expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(400).add(21))
-        expect(await fixed.totalLiquidity()).to.eq(expandTo18Decimals(400).add(21))
+        expect(await fixed.totalSupply()).to.eq("800240015999199984006398")
+        expect(await fixed.totalLiquidity()).to.eq("800240015999199984006398")
         await fixed.harvest()
-        expect(await fixed.totalSupply()).to.eq(expandTo18Decimals(400).add(21))
-        expect(await fixed.totalLiquidity()).to.eq(expandTo18Decimals(10_000 + 400).add(21))
+        expect(await fixed.totalSupply()).to.eq("800240015999199984006398")
+        expect(await fixed.totalLiquidity()).to.eq("800440226120759938760503")
       })
     })
   })

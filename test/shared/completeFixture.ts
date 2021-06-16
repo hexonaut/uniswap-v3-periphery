@@ -59,8 +59,8 @@ const completeFixture: Fixture<{
     tokens[0].address,
     tokens[1].address,
     FeeAmount.LOW,
-    getMinTick(TICK_SPACINGS[FeeAmount.LOW]),
-    getMaxTick(TICK_SPACINGS[FeeAmount.LOW]),
+    -TICK_SPACINGS[FeeAmount.LOW],
+    TICK_SPACINGS[FeeAmount.LOW],
   )) as FixedFungibleERC20
 
   return {
